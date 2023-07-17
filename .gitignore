@@ -1,2 +1,5 @@
 /contacts.db
 /.idea
+/*.csv
+/manifest.txt
+/identifier.sqlite

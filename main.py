@@ -1,89 +1,189 @@
+from collections import namedtuple
+from datetime import datetime
+
 import sys, os, pandas as pd, numpy as np
 from operator import attrgetter
+import sqlite3
 
-SCHOOL_EMAIL_COLUMN = "School Email"
-PERSONAL_EMAIL_COLUMN = "Personal Email"
-CLASS_YEAR_COLUMN = "Class Year"
-FIRST_NAME_COLUMN = "First Name"
-LAST_NAME_COLUMN = "Last Name"
-PHONE_NUMBER_COLUMN = "Phone Number"
-SCHOOL_COLUMN = "School"
-ROLE_COLUMN = "Role"
+SCHOOL_EMAIL_DF_COLUMN = "School Email"
+EMAIL_DF_COLUMN = "Email"
+CLASS_YEAR_DF_COLUMN = "Class Year"
+FIRST_NAME_DF_COLUMN = "First Name"
+LAST_NAME_DF_COLUMN = "Last Name"
+PHONE_NUMBER_DF_COLUMN = "Phone Number"
+SCHOOL_DF_COLUMN = "School"
+ROLE_DF_COLUMN = "Role"
 
-
-def cleanDf(df: pd.DataFrame):
-    newContacts = pd.DataFrame(columns=list(df.columns))
-
-    # this is all painfully redundant but i dont care. i promise im a better programmer than this
-
-    df.drop_duplicates(inplace=True)
-
-    # identify all the rows that share a phone number, choose only the row with the fewest NaN values
-    numbers = df[PHONE_NUMBER_COLUMN].to_numpy().tolist()
-    uniqueNumbers = {x for x in set(numbers) if x == x}  # eliminate NaN value
-    for number in uniqueNumbers:
-        subDf = df.loc[df[PHONE_NUMBER_COLUMN] == number]
-        lens = {}
-        for i in range(len(subDf.index)):
-            notNaN = subDf.iloc[i].isna().sum().sum()
-            lens[notNaN] = i
-        newContacts.loc[len(newContacts.index)] = lens[min(lens.keys())]  # need to be merging lines instead of overwriting !
-
-    # now, combine rows sharing same email
-    for emailColumn in [SCHOOL_EMAIL_COLUMN, PERSONAL_EMAIL_COLUMN]:
-        emails = df[emailColumn].to_numpy().tolist()
-        uniqueEmails = {x for x in set(emails) if x == x}  # eliminate NaN value
-        for email in uniqueEmails:
-            subDf = df.loc[df[emailColumn] == email]
-            lens = {}
-            for i in range(len(subDf.index)):
-                notNaN = subDf.iloc[i].isna().sum().sum()
-                lens[notNaN] = i
-            newContacts.loc[len(newContacts.index)] = subDf.iloc[lens[min(lens.keys())]]
-
-    # we may have added some rows twice by now. eliminate duplicates:
-    newContacts.drop_duplicates(inplace=True)
-    return newContacts
+defaultRows = [EMAIL_DF_COLUMN, CLASS_YEAR_DF_COLUMN, FIRST_NAME_DF_COLUMN,
+               LAST_NAME_DF_COLUMN, PHONE_NUMBER_DF_COLUMN, SCHOOL_DF_COLUMN, ROLE_DF_COLUMN]
 
 
-def mergeRecords(r1, r2):
-    newer = max([r1,r2], key=attrgetter("addedEpoch"))
-    # these two records are the same person. merge them, preferentially saving the newer info if conflict
+# DELETE from Email;
+# DELETE from ContactList;
+# DELETE from Person;
+# DELETE from Role;
+# DELETE from School;
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
-    pass
-
-
-
-
-# two people with the same email are the same person. store aliases.
-# emails that contain "pitzer","pomona","hmc","scripps","cmc??" AND ".edu" are school emails. others are not
-# when two instances of the same name appear, one associated with a school email and one with a personal email, assume same person
-# phone numbers are unique identifiers. two people with the same phone number are the same person
-# when a line is merged, the older origin date is kept
-
-class ContactList:
-    def __init__(self, csvPath, description = None):
-        self.description = description or csvPath.split(os.sep)[-1][:-4]
-        self.csvPath = csvPath
-        self.df = cleanDf(pd.read_csv(csvPath))
-
-    def mergeWith(self, ls):
-        # group rows by person
-        # to do this, group by name, then by phone number, then by email, then by expansive name search (maybe repeat this until we get zero hits?)
-        # resolve each group
-        # two people with the same email are the same person. store aliases.
-        # emails that contain "pitzer","pomona","hmc","scripps","cmc??" AND ".edu" are school emails. others are not
-        # when two instances of the same name appear, one associated with a school email and one with a personal email, assume same person
-        # phone numbers are unique identifiers. two people with the same phone number are the same person
-        # when a line is merged, the older origin date is kept
-
-        # merge each line. we're the master list, the other list is the new one.
-        otherDf = ls.df
-        subDf = self.df[otherDf.columns]
-
-        groups = {}  # name: list
-        aliases = {} # alias: base name
+def queryToDicts(queryResults):
+    """
+    Convert SQLite query results to a list of dictionaries.
+    :param queryResults: List of SQLite query row objects.
+    :return: List of dictionaries representing query results.
+    """
+    dictionary = [dict(row) for row in queryResults if row]
+    return [{k: v for k, v in a.items()} for a in dictionary if a]
 
 
+def timestamp():
+    return datetime.now().strftime("%Y-%m-%d %H:%M")
 
 
+class ContactDatabaseConnection:
+    def __init__(self, dbPath, dateString):
+        self.connection = sqlite3.connect(dbPath)
+        self.connection.row_factory = sqlite3.Row  # get row results in a nice form
+        self.db = self.connection.cursor()
+        self.dateString = dateString
+
+    def insertAlias(self, personId, aliasValue, aliasTableName):
+        print("Update!", "ID:", personId, "alias:", aliasTableName, "value:", aliasValue)
+        self.db.execute(f"""
+            INSERT INTO {aliasTableName}
+            VALUES (?, ?)
+        """, (personId, aliasValue))
+
+    def insertAliasIfNotExists(self, personId, aliasValue, aliasColumnName, aliasTableName):
+        # check if the alias already exists for the person
+        if aliasValue is not None and not pd.isna(aliasValue):
+            self.db.execute(f"""
+                SELECT {aliasColumnName}
+                FROM {aliasTableName}
+                WHERE ID = ? AND {aliasColumnName} = ?
+            """, (personId, aliasValue))
+            existingAlias = self.db.fetchone()
+
+            if not existingAlias:
+                # insert the new alias for the person
+                self.insertAlias(personId, aliasValue, aliasTableName)
+            return
+        # print("Did not edit alias", aliasColumnName, "for person #" + str(personId),
+        #       "because the provided value was None.")
+
+    def getPersonRecord(self, ID):
+        self.db.execute("""
+        SELECT * FROM Person WHERE ID = ?
+        """, (ID,))
+        result = self.db.fetchall()
+        return queryToDicts(result)[0] if len(result) else None
+
+    def addRecord(self, row, description):
+        firstName = row[FIRST_NAME_DF_COLUMN]
+        lastName = row[LAST_NAME_DF_COLUMN]
+        email = row[EMAIL_DF_COLUMN]
+        number = row[PHONE_NUMBER_DF_COLUMN]
+        self.db = self.connection.cursor()
+
+        if pd.isna(email) and pd.isna(number):
+            print(bcolors.BOLD,bcolors.FAIL,"WARNING: Contact",firstName,lastName,"skipped. Must have email or phone number.",bcolors.ENDC)
+            return
+        self.db.execute("""
+            SELECT p.ID
+            FROM Person p
+            INNER JOIN Email ea ON p.ID = ea.ID
+            WHERE (ea.Email = ? OR p.PhoneNumber = ?)
+                AND (p.PhoneNumber IS NULL OR p.PhoneNumber = ?)
+            """, (email, number, number))
+
+        match = self.db.fetchall()  # are there one or more matches already in the db?
+
+        if match:
+            # ---- record exists, we need to update it ----
+            ID = match[0][0]
+            if len(match) > 1:
+                raise ValueError("Something is wrong. ID {} gets more than one result!".format(ID))  # uh oh
+            personRecord = self.getPersonRecord(ID)
+            if not personRecord:
+                raise ValueError("No person with ID {} exists!".format(ID))
+            print("Existing contact:", firstName, lastName, "ID:", ID)
+
+            if number != personRecord["PhoneNumber"]:  # yippee, we got a phone #
+                self.db.execute("""
+                UPDATE Person 
+                SET PhoneNumber = ?
+                WHERE ID = ?
+                """, (number, ID))
+
+            if pd.isna(firstName) and not pd.isna(lastName):
+                raise ValueError("Error with ID {}: Both names cannot be blank".format(ID))
+            if pd.notna(firstName):
+                self.db.execute("UPDATE Person SET FirstName = ? WHERE ID = ?", (firstName, ID))
+            if pd.notna(lastName):
+                self.db.execute("UPDATE Person SET LastName = ? WHERE ID = ?", (lastName, ID))
+
+        else:
+            self.db.execute("SELECT ID FROM Person ORDER BY ID DESC LIMIT 1")
+            res = self.db.fetchone()
+            ID = int(res[
+                         0]) + 1 if res is not None else 0  # our indexing is just to increment each ID by one. real advanced stuff
+            #  ----- no record exists, we need to make a new one -----
+            print("New contact:", firstName, lastName, "ID:", ID)
+            # add record, email, school, alias, role, etc
+            self.db.execute("INSERT INTO Person Values (?,?,?,?,?,?)",
+                            (ID, firstName, lastName, number, self.dateString, timestamp()))
+            pass
+
+        aGroup = namedtuple("AliasGroup", "dfColumn aliasColumnName aliasTableName")
+        aliasGroups = [
+            aGroup(EMAIL_DF_COLUMN, "Email", "Email"),
+            aGroup(ROLE_DF_COLUMN, "Role", "Role"),
+            aGroup(CLASS_YEAR_DF_COLUMN, "Year", "ClassYear"),
+            aGroup(SCHOOL_DF_COLUMN, "School", "School")
+        ]
+        # add aliases (records for fields that may have more than one entry (email, school affiliation, etc))
+        for group in aliasGroups:
+            self.insertAliasIfNotExists(ID, row[group.dfColumn], group.aliasColumnName, group.aliasTableName)
+
+        self.db.execute("INSERT INTO ContactList VALUES (?, ?, ?)", (ID, description, self.dateString))
+        self.db.execute("UPDATE Person SET DateLastEdited = ? WHERE ID = ?", (timestamp(), ID))
+
+        self.connection.commit()
+        self.db.close()
+
+    def unfold(self):
+        pass
+
+    def query(self):
+        pass
+
+
+if __name__ == "__main__":
+    path = 'contacts.db'
+    date = timestamp()
+
+    with open("manifest.txt", "r") as f:
+        lines = [l.split(", ") for l in f.readlines()]
+
+    contactDb = ContactDatabaseConnection(path, date)
+    for file, description in lines:
+        df = pd.read_csv(file)
+        for col in [EMAIL_DF_COLUMN, CLASS_YEAR_DF_COLUMN, FIRST_NAME_DF_COLUMN, LAST_NAME_DF_COLUMN, PHONE_NUMBER_DF_COLUMN, SCHOOL_DF_COLUMN, ROLE_DF_COLUMN]:
+            if col not in df.columns:
+                raise ValueError("CSV must have column header '"+col+"'")
+        try:
+            datetime.strptime(date, "%Y-%m-%d %H:%M")
+        except:
+            raise ValueError("Malformed date string")
+        for index, row in df.iterrows():
+            contactDb.addRecord(row,description)
+
+    contactDb.connection.close()
