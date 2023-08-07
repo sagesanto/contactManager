@@ -1,5 +1,7 @@
 /contacts.db
 /.idea
-/*.csv
+**.csv
+/testCSVs
 /manifest.txt
 /identifier.sqlite
+**.zip

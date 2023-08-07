@@ -1,9 +1,11 @@
 from collections import namedtuple
 from datetime import datetime
-
+from abc import ABC, abstractmethod
 import sys, os, pandas as pd, numpy as np
+import re
 from operator import attrgetter
 import sqlite3
+import formatters
 
 SCHOOL_EMAIL_DF_COLUMN = "School Email"
 EMAIL_DF_COLUMN = "Email"
@@ -34,6 +36,7 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+
 def queryToDicts(queryResults):
     """
     Convert SQLite query results to a list of dictionaries.
@@ -56,7 +59,7 @@ class ContactDatabaseConnection:
         self.dateString = dateString
 
     def insertAlias(self, personId, aliasValue, aliasTableName):
-        print("Update!", "ID:", personId, "alias:", aliasTableName, "value:", aliasValue)
+        # print("Update!", "ID:", personId, "alias:", aliasTableName, "value:", aliasValue)
         self.db.execute(f"""
             INSERT INTO {aliasTableName}
             VALUES (?, ?)
@@ -79,6 +82,7 @@ class ContactDatabaseConnection:
         # print("Did not edit alias", aliasColumnName, "for person #" + str(personId),
         #       "because the provided value was None.")
 
+    # TODO: what to do when we get back more than one record? right now we just ignore all but the first one
     def getPersonRecord(self, ID):
         self.db.execute("""
         SELECT * FROM Person WHERE ID = ?
@@ -94,27 +98,38 @@ class ContactDatabaseConnection:
         self.db = self.connection.cursor()
 
         if pd.isna(email) and pd.isna(number):
-            print(bcolors.BOLD,bcolors.FAIL,"WARNING: Contact",firstName,lastName,"skipped. Must have email or phone number.",bcolors.ENDC)
+            print(bcolors.BOLD, bcolors.FAIL, "WARNING: Contact", firstName, lastName,
+                  "skipped. Must have email or phone number.", bcolors.ENDC)
             return
-        self.db.execute("""
-            SELECT p.ID
-            FROM Person p
-            INNER JOIN Email ea ON p.ID = ea.ID
-            WHERE (ea.Email = ? OR p.PhoneNumber = ?)
-                AND (p.PhoneNumber IS NULL OR p.PhoneNumber = ?)
-            """, (email, number, number))
+        if not pd.isna(email):
+            query = """
+                SELECT p.ID
+                FROM Person p
+                INNER JOIN Email ea ON p.ID = ea.ID
+                WHERE (ea.Email = ? OR p.PhoneNumber = ?)
+                    AND (p.PhoneNumber IS NULL OR p.PhoneNumber = ? OR ? IS NULL)
+                """
+            self.db.execute(query, (email, number, number, number))
+
+        else:
+            query = """
+                SELECT p.ID
+                FROM Person p
+                WHERE p.PhoneNumber = ?
+                """
+            self.db.execute(query, (number,))
 
         match = self.db.fetchall()  # are there one or more matches already in the db?
 
         if match:
             # ---- record exists, we need to update it ----
             ID = match[0][0]
-            if len(match) > 1:
-                raise ValueError("Something is wrong. ID {} gets more than one result!".format(ID))  # uh oh
+            # if len(match) > 1:
+            #     raise ValueError("Something is wrong. ID {} gets more than one result!".format(ID))  # uh oh
             personRecord = self.getPersonRecord(ID)
             if not personRecord:
                 raise ValueError("No person with ID {} exists!".format(ID))
-            print("Existing contact:", firstName, lastName, "ID:", ID)
+            # print("Existing contact:", firstName, lastName, "ID:", ID)
 
             if number != personRecord["PhoneNumber"]:  # yippee, we got a phone #
                 self.db.execute("""
@@ -123,14 +138,15 @@ class ContactDatabaseConnection:
                 WHERE ID = ?
                 """, (number, ID))
 
-            if pd.isna(firstName) and not pd.isna(lastName):
+            if pd.isna(firstName) and pd.isna(lastName):
                 raise ValueError("Error with ID {}: Both names cannot be blank".format(ID))
             if pd.notna(firstName):
                 self.db.execute("UPDATE Person SET FirstName = ? WHERE ID = ?", (firstName, ID))
             if pd.notna(lastName):
                 self.db.execute("UPDATE Person SET LastName = ? WHERE ID = ?", (lastName, ID))
+            print("Finished person",firstName,lastName)
 
-        else:
+        else:  # this is a new person
             self.db.execute("SELECT ID FROM Person ORDER BY ID DESC LIMIT 1")
             res = self.db.fetchone()
             ID = int(res[
@@ -157,7 +173,7 @@ class ContactDatabaseConnection:
         self.db.execute("UPDATE Person SET DateLastEdited = ? WHERE ID = ?", (timestamp(), ID))
 
         self.connection.commit()
-        self.db.close()
+        self.db.close()  # closing the db, not the connection
 
     def unfold(self):
         pass
@@ -166,24 +182,39 @@ class ContactDatabaseConnection:
         pass
 
 
+def formatDf(df, fmters):
+    for f in fmters:
+        if f.inputColName in df.columns:
+            df[f.outColNames] = df.apply(lambda row: f.format(row[f.inputColName]), axis='columns',result_type='expand')
+    return df
+
+
 if __name__ == "__main__":
     path = 'contacts.db'
     date = timestamp()
 
-    with open("manifest.txt", "r") as f:
-        lines = [l.split(", ") for l in f.readlines()]
+    with open("./CSVs/manifest.txt", "r") as f:
+        lines = [l.split(", ") for l in f.readlines() if not l.startswith("%")]
 
     contactDb = ContactDatabaseConnection(path, date)
+
+    nameFormatter = formatters.NameFormatter("Name", [FIRST_NAME_DF_COLUMN, LAST_NAME_DF_COLUMN])
+    numberFormatter = formatters.PhoneNumberFormatter(PHONE_NUMBER_DF_COLUMN, [PHONE_NUMBER_DF_COLUMN])
+
+    fmters = [numberFormatter, nameFormatter]
+
     for file, description in lines:
-        df = pd.read_csv(file)
-        for col in [EMAIL_DF_COLUMN, CLASS_YEAR_DF_COLUMN, FIRST_NAME_DF_COLUMN, LAST_NAME_DF_COLUMN, PHONE_NUMBER_DF_COLUMN, SCHOOL_DF_COLUMN, ROLE_DF_COLUMN]:
+        df = formatDf(pd.read_csv("./CSVs/" + file),fmters)
+        for col in [EMAIL_DF_COLUMN, CLASS_YEAR_DF_COLUMN, FIRST_NAME_DF_COLUMN, LAST_NAME_DF_COLUMN,
+                    PHONE_NUMBER_DF_COLUMN, SCHOOL_DF_COLUMN, ROLE_DF_COLUMN]:
             if col not in df.columns:
-                raise ValueError("CSV must have column header '"+col+"'")
+                raise ValueError("CSV must have column header '" + col + "'")
         try:
             datetime.strptime(date, "%Y-%m-%d %H:%M")
         except:
             raise ValueError("Malformed date string")
         for index, row in df.iterrows():
-            contactDb.addRecord(row,description)
+            # print("Would have added",row,description)
+            contactDb.addRecord(row, description.replace('\n',''))
 
     contactDb.connection.close()
