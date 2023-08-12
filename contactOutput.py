@@ -6,9 +6,18 @@ import re
 from operator import attrgetter
 import sqlite3
 import formatters
-from contactInput import queryToDicts
-from contactInput import PHONE_NUMBER_DF_COLUMN, EMAIL_DF_COLUMN, CLASS_YEAR_DF_COLUMN, FIRST_NAME_DF_COLUMN, \
+from csvInput import PHONE_NUMBER_DF_COLUMN, EMAIL_DF_COLUMN, CLASS_YEAR_DF_COLUMN, FIRST_NAME_DF_COLUMN, \
     LAST_NAME_DF_COLUMN, SCHOOL_DF_COLUMN, ROLE_DF_COLUMN
+
+
+def queryToDicts(queryResults):
+    """
+    Convert SQLite query results to a list of dictionaries.
+    :param queryResults: List of SQLite query row objects.
+    :return: List of dictionaries representing query results.
+    """
+    dictionary = [dict(row) for row in queryResults if row]
+    return [{k: v for k, v in a.items()} for a in dictionary if a]
 
 
 class DbConnection:
@@ -21,8 +30,6 @@ class DbConnection:
 def sqlOutToDf(fetchAllResult):
     result = queryToDicts(fetchAllResult)
     df = pd.DataFrame(result)
-    # df['Year'] = df['Year'].fillna(0)
-    oldDf = df.copy()
     df['Year'] = df['Year'].fillna(0).astype(int).astype('str').str.rstrip('.0')
     df["PhoneNumber"] = df["PhoneNumber"].astype('str').str.rstrip('.0')
     df = df.groupby('ID').agg({
@@ -47,8 +54,6 @@ def sqlOutToDf(fetchAllResult):
                   EMAIL_DF_COLUMN, "First Name Aliases", "Last Name Aliases", CLASS_YEAR_DF_COLUMN, SCHOOL_DF_COLUMN]
     columnMapping = dict(zip(sqlColumns, outColumns))
     df = df.rename(columns=columnMapping)
-    # obj_df = df.select_dtypes(include=[np.object])
-    # num_df = df.select_dtypes(exclude=[np.object])
     print(df)
     # df = obj_df.head(1).combine_first(obj_df.tail(1)).join(num_df.head(1).add(num_df.tail(1)))
     return df
@@ -107,7 +112,7 @@ if __name__ == "__main__":
     dfs = reconstructLists(db)
     print(dfs)
     for listName, listDf in dfs.items():
-        listDf.to_csv("reconstruct/{}_enriched.csv".format(listName))
+        listDf.to_csv("reconstruct/{}_enriched.csv".format(listName.replace('\n', '')))
 
     # df = outputAll(db)
     # df.to_csv("out.csv")

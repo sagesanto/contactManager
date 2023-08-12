@@ -28,14 +28,19 @@ class PhoneNumberFormatter(DataFormatter):
         return "This formatter takes phone numbers in any form and returns their last 10 digits with no non-digit characters."
 
     def format(self, number):
+        print("formatting phone number")
         try:
-            if not isinstance(number, str):
-                number = int(number)  # get rid of an annoying floating .0 that sometimes appeears
+            # if not isinstance(number, str):
+            #     number = int(number)  # get rid of an annoying floating .0 that sometimes appeears <--this is bad! overflow if cast phone number to int
             number = str(number)
-            cleaned = re.sub("[^0-9]", "", str(number))
-            return {self.outColNames[0]: cleaned[-10:]}
-        except:
+            cleaned = re.sub("[^0-9]", "", str(number))[-10:]
+            if len(cleaned) < 10:
+                raise ValueError("Must have 10 or more digits.")
+            return {self.outColNames[0]: cleaned}
+        except Exception as e:
+            print("Could not format phone number:", repr(e))
             return {self.outColNames[0]: None}
+        # last ten digits of phone number stripped of all non-digit characters
 
 
 class NameFormatter(DataFormatter):
@@ -54,4 +59,3 @@ class NameFormatter(DataFormatter):
             return {"First Name": spl[0], "Last Name": " ".join(spl[1:])}
         except:
             return None
-        # last ten digits of phone number stripped of all non-digit characters
