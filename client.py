@@ -30,7 +30,7 @@ if __name__ == "__main__":
         {'FirstName': 'Vincent', 'LastName': 'Miller', 'PhoneNumber': '9307114963', 'ContactList': 'DummyRandomData', 'Email': 'v.miller@randatmail.com', 'Role': 'vgondw', 'School': 'cszjte'}
     )
 
-    addContact(p)
+    # addContact(p)
 
     fetchAllContacts()
 

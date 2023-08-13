@@ -9,7 +9,7 @@ import models, schemas
 from dbConfig import dbSession
 from models import ContactList, Person
 from sqlalchemy import func, asc, desc, and_, select
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, joinedload
 from schemas import PersonSchema
 
 
@@ -21,7 +21,10 @@ class Query(graphene.ObjectType):
     @staticmethod
     def resolve_allPeople(self, info):
         query = schemas.PersonModel.get_query(info)
-        return query.all()
+        print(str(query.statement))
+        # print(query.compile())
+        res = query.all()
+        return res
 
     @staticmethod
     def resolve_peopleOnList(self, info, listName):

@@ -18,6 +18,7 @@ class PersonSchema(BaseModel):
     PhoneNumber: Optional[str] = None
     ClassYear: Optional[int] = None
     ContactList: str
+    CsvFilePath: Optional[str] = None
     Email: Optional[str] = None
     Role: Optional[str] = None
     School: Optional[str] = None

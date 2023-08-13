@@ -28,7 +28,6 @@ class PhoneNumberFormatter(DataFormatter):
         return "This formatter takes phone numbers in any form and returns their last 10 digits with no non-digit characters."
 
     def format(self, number):
-        print("formatting phone number")
         try:
             # if not isinstance(number, str):
             #     number = int(number)  # get rid of an annoying floating .0 that sometimes appeears <--this is bad! overflow if cast phone number to int

@@ -75,7 +75,7 @@ def main():
             # print("Would have added",row,description)
             try:
                 person = dbRowToPersonSchema(row, description.replace('\n', ''))
-                print(person.model_dump(exclude_none=True, exclude_unset=True))
+                person.CsvFilePath = file
             except:
                 raise ValueError(
                     f"Could not perform conversion on CSV {file}. Are you sure that you have all of the required columns?")

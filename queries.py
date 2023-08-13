@@ -74,7 +74,7 @@ class CreatePerson(QueryBundle):
 class AllPeople(QueryBundle):
     @property
     def rawQuery(self):
-        return Query(name="allPeople", fields=["FirstName", "LastName"])
+        return Query(name="allPeople", fields=["FirstName", "LastName", "PhoneNumber", "ContactLists {ListName}"])
 
     @property
     def operation(self):

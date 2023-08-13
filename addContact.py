@@ -3,10 +3,10 @@ from datetime import datetime
 import pandas as pd, numpy as np
 import schemas
 import dbConfig
-from models import Person, Email, Role, ClassYear, School, ContactList
+from models import Person, Email, Role, ClassYear, School, ContactList, PersonContactListAssociation
 from sqlalchemy.orm import aliased
+from sqlalchemy import insert
 from line_profiler_pycharm import profile
-
 
 import cProfile
 import io
@@ -27,6 +27,7 @@ def profiled():
     # ps.print_callers()
     print(s.getvalue())
 
+
 class tcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -46,7 +47,23 @@ def timestamp():
 @profile
 def IDIsOnList(dbSession, listName, ID):
     query = (
-        dbSession.query(ContactList).filter((ContactList.ListName == listName) & (ContactList.ID == ID))
+        dbSession.query(ContactList).filter((ContactList.ListName == listName) & (ContactList.PersonID == ID))
+    )
+    res = query.first()
+    return res is not None
+
+
+def findExistingListID(db, listName: str):
+    r = db.query(ContactList).filter(ContactList.ListName == listName).first()
+    return r.TableID if r else None
+
+def ListAssociationExists(dbSession, personID, contactListID):
+    query = (
+        dbSession.query(PersonContactListAssociation)
+        .filter(
+            (PersonContactListAssociation.c.PersonID == personID) &
+            (PersonContactListAssociation.c.ContactListID == contactListID)
+        )
     )
     res = query.first()
     return res is not None
@@ -64,7 +81,7 @@ def findExistingContactID(db, person):
     if person.Email:
         query = (
             db.query(p.ID)
-            .join(ea, p.ID == ea.ID)
+            .join(ea, p.ID == ea.PersonID)
             .filter(
                 ((ea.Email == person.Email) | (
                         (p.PhoneNumber == person.PhoneNumber) & (person.PhoneNumber is not None))) &
@@ -99,7 +116,7 @@ def getPersonRecord(dbSession, ID):
 @profile
 def insertAlias(dbSession, personId, aliasValue, aliasModelClass, aliasColumnName):
     # print("Update!", "ID:", personId, "alias:", aliasTableName, "value:", aliasValue)
-    newAlias = aliasModelClass(ID=personId)
+    newAlias = aliasModelClass(PersonID=personId)
     setattr(newAlias, aliasColumnName, aliasValue)
     dbSession.add(newAlias)
     dbSession.commit()
@@ -111,7 +128,8 @@ def insertAliasIfNotExists(dbSession, personId, aliasValue, aliasColumnName, ali
     if aliasValue is not None and not pd.isna(aliasValue):
         existingAlias = (
             dbSession.query(getattr(aliasModelClass, aliasColumnName))
-            .filter(getattr(aliasModelClass, 'ID') == personId, getattr(aliasModelClass, aliasColumnName) == aliasValue)
+            .filter(getattr(aliasModelClass, 'PersonID') == personId,
+                    getattr(aliasModelClass, aliasColumnName) == aliasValue)
             .first()
         )
 
@@ -140,6 +158,7 @@ def addRecord(person: schemas.PersonSchema):
         # ---- record exists, we need to update it ----
         # if len(match) > 1:
         #     raise ValueError("Something is wrong. ID {} gets more than one result!".format(ID))  # uh oh
+        person.ID = ID
         personRecord = getPersonRecord(dbSession, ID)
         if not personRecord:
             raise ValueError("Internal error: no person with ID {} exists!".format(ID))
@@ -152,7 +171,7 @@ def addRecord(person: schemas.PersonSchema):
             personRecord.FirstName = person.FirstName
             edited = True
         if person.LastName and person.LastName != personRecord.LastName:
-            personRecord.LastName = person.FirstName
+            personRecord.LastName = person.LastName
             edited = True
 
     else:  # this is a new person
@@ -184,14 +203,31 @@ def addRecord(person: schemas.PersonSchema):
             insertAliasIfNotExists(dbSession, ID, group.aliasValue, group.aliasColumnName, group.aliasModelClass))
     edited = np.any(editedBools) or edited
 
-    if not IDIsOnList(dbSession, person.ContactList, ID):
+    listID = findExistingListID(dbSession, person.ContactList)
+    if listID is None:
         newContactListEntry = ContactList(
-            ID=ID,
             ListName=person.ContactList,
+            CsvFilePath=person.CsvFilePath,
             Date=timestamp()
         )
         dbSession.add(newContactListEntry)
         edited = True
+        dbSession.commit()
+        listID = newContactListEntry.TableID
+    if listID is None:
+        latestId = dbSession.query(Person.ID).order_by(Person.ID.desc()).limit(1).scalar()
+        listID = int(latestId) + 1 if latestId is not None else 0
+    if listID is None or person.ID is None:
+        raise AttributeError("fuck")
+        print("fuck")
+    statement = insert(PersonContactListAssociation).values(
+        PersonID=person.ID,
+        ContactListID=listID
+    )
+    try:
+        dbSession.execute(statement)
+    except Exception as e:
+        print("Couldn't add list association (probably just a repeat):",repr(e))
     if edited:
         print("Updated person with ID", ID)
         pEntry = dbSession.query(Person).filter_by(ID=ID).first()

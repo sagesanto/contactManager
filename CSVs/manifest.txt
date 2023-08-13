@@ -9,3 +9,4 @@
 %ClipboardingContactPITZER_Unknown.csv, ClipboardingPITZER_Unknown
 %ClipboardingContact_HMC.csv, ClipboardingContact_HMC_Unknown
 dummyRandomData.csv, DummyRandomData
+dummyRandomData.csv, DummyRandomData2
