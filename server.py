@@ -28,10 +28,7 @@ class Query(graphene.ObjectType):
 
     @staticmethod
     def resolve_peopleOnList(self, info, listName):
-        query = dbSession.query(models.Person).join(models.ContactList.Person)
-        query = query.filter(models.ContactList.ListName == listName)
-        results = query.all()
-        return results
+        return dbSession.query(Person).join(ContactList.People).filter(ContactList.ListName==listName).all()
 
     @staticmethod
     def resolve_allLists(self, info):

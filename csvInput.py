@@ -1,9 +1,8 @@
 import logging
 from line_profiler_pycharm import profile
-from collections import namedtuple
-from datetime import datetime
-from abc import ABC, abstractmethod
 import sys, os, pandas as pd, numpy as np, time
+
+import dbConfig
 import formatters
 from addContact import addRecord
 from schemas import PersonSchema
@@ -22,6 +21,15 @@ defaultColumns = [FIRST_NAME_DF_COLUMN, LAST_NAME_DF_COLUMN, ROLE_DF_COLUMN, PHO
 outColumns = ["FirstName", "LastName", "Role", "PhoneNumber", "Email", "ClassYear", "School"]
 
 columnMapping = dict(zip(defaultColumns, outColumns))
+
+dateFormat = '%m/%d/%Y %H:%M:%S'
+fileFormatter = logging.Formatter(fmt='%(asctime)s %(levelname)-2s | %(message)s', datefmt=dateFormat)
+fileHandler = logging.FileHandler("./contacts.log")
+fileHandler.setFormatter(fileFormatter)
+fileHandler.setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
+logger.addHandler(fileHandler)
+logger.setLevel(logging.INFO)
 
 
 class bcolors:
@@ -70,16 +78,18 @@ def main():
         # for col in defaultColumns:
         #     if col not in df.columns:
         #         raise ValueError(f"CSV {file} must have column header '{col}'")
-
+        logger.info(f"Adding CSV {file}")
         for index, row in df.iterrows():
             # print("Would have added",row,description)
             try:
                 person = dbRowToPersonSchema(row, description.replace('\n', ''))
                 person.CsvFilePath = file
-            except:
-                raise ValueError(
-                    f"Could not perform conversion on CSV {file}. Are you sure that you have all of the required columns?")
+            except Exception as e:
+                print(f"Could not perform conversion on row {row} in file {file}. Are you sure that you have all of the required columns?",repr(e))
+                logger.warning(f"Could not perform conversion on row {row} in file {file}: {repr(e)}")
+                continue
             addRecord(person)
+        dbConfig.renewDbSession()
 
 
 if __name__ == "__main__":

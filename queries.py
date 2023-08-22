@@ -3,7 +3,7 @@ from collections import namedtuple
 
 from graphql_query import Operation, Query, Argument, Variable
 from gql import Client, gql
-from schemas import PersonSchema
+from schemas import PersonSchema, PersonSchemaOut
 
 ClassYear = Variable(name="ClassYear", type="Int")
 ContactList = Variable(name="ContactList", type="String!")
@@ -71,10 +71,32 @@ class CreatePerson(QueryBundle):
                          queries=[self.rawQuery])
 
 
+def cleanList(l):
+    for i in l:
+        if isinstance(i, list):
+            i = cleanList(i)
+        else:
+            i = cleanDict(i)
+    return l
+
+
+def cleanDict(d):
+    bad = []
+    for k, v in d.items():
+        if isinstance(v, list):
+            d[k] = cleanList(v)
+        else:
+            if v is None:
+                bad.append(k)
+    for k in bad:
+        del d[k]
+    return d
+
+
 class AllPeople(QueryBundle):
     @property
     def rawQuery(self):
-        return Query(name="allPeople", fields=["FirstName", "LastName", "PhoneNumber", "ContactLists {ListName}"])
+        return Query(name="allPeople", fields=["FirstName", "LastName", "PhoneNumber", "DateAdded", "DateLastEdited", "ContactLists {ListName, TableID, CsvFilePath, Date}"])
 
     @property
     def operation(self):
@@ -87,7 +109,9 @@ class AllPeople(QueryBundle):
         failed = []
         for d in list(result.values())[0]:
             try:
-                p = PersonSchema.model_validate(d)
+                d = cleanDict(d)
+                PersonSchemaOut.model_config['from_attributes'] = True
+                p = PersonSchemaOut.model_validate(d)
                 people.append(p)
             except Exception as e:
                 print(f"Couldn't create schema from {d}: {repr(e)}")

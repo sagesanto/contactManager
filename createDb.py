@@ -61,7 +61,7 @@ def createDatabase(dbPath):
         CREATE TABLE "Email" (
             "TableID"	INTEGER NOT NULL UNIQUE,
             "PersonID"	INTEGER NOT NULL,
-            "Email"	TEXT NOT NULL UNIQUE,
+            "Email"	TEXT NOT NULL,
             PRIMARY KEY("TableID" AUTOINCREMENT),
             FOREIGN KEY(PersonID) REFERENCES Person(ID)
         )""")

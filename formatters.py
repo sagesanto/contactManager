@@ -1,6 +1,8 @@
 import re
 from abc import ABC, abstractmethod
 
+import pandas as pd
+
 
 class DataFormatter(ABC):
     def __init__(self, inputColName, outColNames: list):
@@ -29,6 +31,8 @@ class PhoneNumberFormatter(DataFormatter):
 
     def format(self, number):
         try:
+            if pd.isna(number):
+                raise ValueError("Empty phone number")
             # if not isinstance(number, str):
             #     number = int(number)  # get rid of an annoying floating .0 that sometimes appeears <--this is bad! overflow if cast phone number to int
             number = str(number)
@@ -49,7 +53,7 @@ class NameFormatter(DataFormatter):
             raise ValueError("The name formatter outputs to exactly two columns.")
 
     def info(self):
-        return "This formatter takes a full name string and separates it into first name, last name"
+        return "This formatter takes a full name string and separates it into First Name and Last Name columns"
 
     def format(self, name):
         try:

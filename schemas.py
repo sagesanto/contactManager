@@ -1,35 +1,14 @@
 # enable sqlalchemy and graphene to play nice
 from typing import Optional
+
+import pydantic_core.core_schema
 from graphene_sqlalchemy import SQLAlchemyObjectType
 from models import *
 from pydantic import BaseModel
 
-
 # Person: sqlAlchemy model; representation of record in Person table - models.py
 # PersonModel: graphene representation of sqlAlchemy model - schemas.py
 # PersonSchema: pydantic model to validate mutations (contact inserts) - schemas.py
-
-
-# this pydantic schema will be used to validate incoming mutation requests
-
-class PersonSchema(BaseModel):
-    FirstName: str
-    LastName: Optional[str] = None
-    PhoneNumber: Optional[str] = None
-    ClassYear: Optional[int] = None
-    ContactList: str
-    CsvFilePath: Optional[str] = None
-    Email: Optional[str] = None
-    Role: Optional[str] = None
-    School: Optional[str] = None
-    ID: Optional[int] = None
-    DateAdded: Optional[str] = None
-    DateLastEdited: Optional[str] = None
-
-
-def personSchemaToModel(p: PersonSchema):
-    return Person(ID=p.ID, FirstName=p.FirstName, LastName=p.LastName, PhoneNumber=p.PhoneNumber, DateAdded=p.DateAdded,
-                  DateLastEdited=p.DateLastEdited)
 
 
 # these models just correlate SQLAlchemy models to Graphene models, allowing
@@ -68,3 +47,49 @@ class RoleModel(SQLAlchemyObjectType):
 class SchoolModel(SQLAlchemyObjectType):
     class Meta:
         model = School
+
+
+pydanticPerson = sqlalchemy_to_pydantic(Person)
+pydanticClassYear = sqlalchemy_to_pydantic(ClassYear)
+pydanticContactList = sqlalchemy_to_pydantic(ContactList)
+pydanticEmail = sqlalchemy_to_pydantic(Email)
+pydanticRole = sqlalchemy_to_pydantic(Role)
+pydanticSchool = sqlalchemy_to_pydantic(School)
+
+
+# trying to make a schema that can construct person from sqlalchemy
+
+
+
+# this pydantic schema will be used to validate incoming mutation requests
+class PersonSchema(BaseModel):
+    # model_config = dict(arbitrary_types_allowed=True)
+    FirstName: str
+    LastName: Optional[str] = None
+    PhoneNumber: Optional[str] = None
+    ClassYear: Optional[int] = None
+    ContactList: str
+    CsvFilePath: Optional[str] = None
+    Email: Optional[str] = None
+    Role: Optional[str] = None
+    School: Optional[str] = None
+    ID: Optional[int] = None
+    DateAdded: Optional[str] = None
+    DateLastEdited: Optional[str] = None
+
+
+def personSchemaToModel(p: PersonSchema):
+    return Person(ID=p.ID, FirstName=p.FirstName, LastName=p.LastName, PhoneNumber=p.PhoneNumber, DateAdded=p.DateAdded,
+                  DateLastEdited=p.DateLastEdited)
+
+
+class PersonSchemaOut(pydanticPerson):
+    # model_config = dict(arbitrary_types_allowed=True)
+    ClassYears: Optional[List[pydanticClassYear]] = []
+    ContactLists: List[pydanticContactList] = []
+    CsvFilePath: Optional[str] = None
+    Emails: Optional[List[pydanticEmail]] = None
+    Role: Optional[List[pydanticRole]] = None
+    School: Optional[List[pydanticSchool]] = None
+    ID: Optional[int] = None
+    PhoneNumber: Optional[str] = None

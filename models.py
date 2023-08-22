@@ -4,7 +4,7 @@ from typing import List
 from sqlalchemy import Column, Integer, String, ForeignKey, Table, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship, backref, Mapped, mapped_column
 from dbConfig import Base
-
+from sqlalchemy_to_pydantic import sqlalchemy_to_pydantic
 
 PersonContactListAssociation = Table(
     'PersonContactListAssociation',

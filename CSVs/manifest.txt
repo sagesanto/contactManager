@@ -1,12 +1,23 @@
-%TestContactList.csv, UnknownList
-%TestContactInfo2.csv, UnknownList
-%CBoardingDigitization_3_22.csv, CBoardingContacts_3_22
-%CMC_ClipBoard_Contact_CMC.csv, CMC_ClipboardingUnknown
-%contacts.csv, UnknownList
-%ClipboardingContact_UNKNOWN.csv, ClipboardingUnknown
-%ClipboardingContact_SCRIPPS.csv, ClipboardingSCRIPPS_Unknown
-%ClipboardingContact_POMONA_Unknown.csv, ClipboardingPOMONA_Unknown
-%ClipboardingContactPITZER_Unknown.csv, ClipboardingPITZER_Unknown
-%ClipboardingContact_HMC.csv, ClipboardingContact_HMC_Unknown
-dummyRandomData.csv, DummyRandomData
-dummyRandomData.csv, DummyRandomData2
+TestContactList.csv, UnknownList
+TestContactInfo2.csv, UnknownList
+CBoardingDigitization_3_22.csv, CBoardingContacts_3_22
+CMC_ClipBoard_Contact_CMC.csv, CMC_ClipboardingUnknown
+contacts.csv, UnknownList
+ClipboardingContact_UNKNOWN.csv, ClipboardingUnknown
+ClipboardingContact_SCRIPPS.csv, ClipboardingSCRIPPS_Unknown
+ClipboardingContact_POMONA_Unknown.csv, ClipboardingPOMONA_Unknown
+ClipboardingContactPITZER_Unknown.csv, ClipboardingPITZER_Unknown
+ClipboardingContact_HMC.csv, ClipboardingContact_HMC_Unknown
+CSWA 2022 club rush.csv, 2022 Club Rush
+Gen Body Contact Info.csv, 22-23 Contact Info
+Letter of Demand Responses-Alumni.csv, Pitzer 3 Alumni letter of demand responses
+Letter of Demand Responses-New Students.csv, Class of 27 PZ3 respondents
+Mobilization sign-in 9_28_22.csv, mobilization members 2022
+Mutual Aid Contributors.csv, PZ3 mutual aid contributors
+New Contacts.csv, large unknown contact list
+Picket turf analysis.csv, PO picket signups fall 2022
+Pomona Labor Day Rally Data.csv, PO labor day signups 2022
+Pomona Parents Petition Responses.csv, PO parents petition 22
+PZ3 Letter of Demand Responses for Autotexts.csv, PZ3 LoD autotext respondents
+%dummyRandomData.csv, DummyRandomData
+%dummyRandomData.csv, DummyRandomData2
