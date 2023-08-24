@@ -12,7 +12,7 @@ def createDatabase(dbPath):
             "ID"	INTEGER NOT NULL UNIQUE,
             "FirstName"	TEXT NOT NULL,
             "LastName"	TEXT,
-            "PhoneNumber"	INTEGER UNIQUE,
+            "PhoneNumber"	TEXT UNIQUE,
             "DateAdded"	TEXT NOT NULL,
             "DateLastEdited"	TEXT NOT NULL,
             PRIMARY KEY("ID" AUTOINCREMENT)
@@ -20,28 +20,12 @@ def createDatabase(dbPath):
         """
     )
 
-    # Create name alias table
-    cur.execute(
-        """
-        CREATE TABLE "Alias" (
-            "TableID"	INTEGER NOT NULL UNIQUE,
-            "PersonID"	INTEGER NOT NULL,
-            "First"	TEXT,
-            "Last"	TEXT,
-            PRIMARY KEY("TableID" AUTOINCREMENT),
-            FOREIGN KEY(PersonID) REFERENCES Person(ID)
-        )
-        """
-    )
-
-    # Create class year table
+    # create class year table
     cur.execute("""
     CREATE TABLE "ClassYear" (
         "TableID"	INTEGER NOT NULL UNIQUE,
-        "PersonID"	INTEGER NOT NULL,
-        "Year"	INTEGER NOT NULL,
-        PRIMARY KEY("TableID" AUTOINCREMENT),
-        FOREIGN KEY(PersonID) REFERENCES Person(ID)
+        "Year"	INTEGER NOT NULL UNIQUE,
+        PRIMARY KEY("TableID" AUTOINCREMENT)
     )
     """)
 
@@ -49,7 +33,7 @@ def createDatabase(dbPath):
     cur.execute("""
         CREATE TABLE "ContactList" (
         "TableID"	INTEGER NOT NULL UNIQUE,
-        "ListName"	TEXT NOT NULL,
+        "ListName"	TEXT NOT NULL UNIQUE,
         "CsvFilePath" TEXT,
         "Date"	TEXT NOT NULL,
         PRIMARY KEY("TableID" AUTOINCREMENT)
@@ -60,31 +44,27 @@ def createDatabase(dbPath):
         """
         CREATE TABLE "Email" (
             "TableID"	INTEGER NOT NULL UNIQUE,
-            "PersonID"	INTEGER NOT NULL,
-            "Email"	TEXT NOT NULL,
-            PRIMARY KEY("TableID" AUTOINCREMENT),
-            FOREIGN KEY(PersonID) REFERENCES Person(ID)
+            "Email"	TEXT NOT NULL UNIQUE,
+            PRIMARY KEY("TableID" AUTOINCREMENT)
         )""")
 
     # create table to store the roles a contact has
     cur.execute("""
         CREATE TABLE "Role" (
         "TableID"	INTEGER NOT NULL UNIQUE,
-        "PersonID"	INTEGER NOT NULL,
-        "Role"	TEXT NOT NULL,
-        PRIMARY KEY("TableID" AUTOINCREMENT),
-        FOREIGN KEY(PersonID) REFERENCES Person(ID)
-    )""")
+        "Role"	TEXT NOT NULL UNIQUE,
+        PRIMARY KEY("TableID" AUTOINCREMENT)
+        )""")
 
     # create table to store which schools a contact is affiliated with
     cur.execute("""
     CREATE TABLE "School" (
         "TableID"	INTEGER NOT NULL UNIQUE,
-        "PersonID"	INTEGER NOT NULL,
-        "School"	TEXT NOT NULL,
-        PRIMARY KEY("TableID" AUTOINCREMENT),
-        FOREIGN KEY(PersonID) REFERENCES Person(ID)
+        "School"	TEXT NOT NULL UNIQUE,
+        PRIMARY KEY("TableID" AUTOINCREMENT)
     )""")
+
+# associations
 
     cur.execute("""
     CREATE TABLE "PersonContactListAssociation" (
@@ -95,5 +75,41 @@ def createDatabase(dbPath):
         FOREIGN KEY(ContactListID) REFERENCES "ContactList"(TableID)
     )""")
 
+    cur.execute("""
+    CREATE TABLE "PersonYearAssociation" (
+        "PersonID" INTEGER,
+        "AssocID" INTEGER,
+        PRIMARY KEY (PersonID, AssocID),
+        FOREIGN KEY(PersonID) REFERENCES "Person"(ID),
+        FOREIGN KEY(AssocID) REFERENCES "ClassYear"(TableID)
+    )""")
 
-createDatabase("contacts.db")
+    cur.execute("""
+    CREATE TABLE "PersonEmailAssociation" (
+        "PersonID" INTEGER,
+        "AssocID" INTEGER,
+        PRIMARY KEY (PersonID, AssocID),
+        FOREIGN KEY(PersonID) REFERENCES "Person"(ID),
+        FOREIGN KEY(AssocID) REFERENCES "Email"(TableID)
+    )""")
+
+    cur.execute("""
+    CREATE TABLE "PersonSchoolAssociation" (
+        "PersonID" INTEGER,
+        "AssocID" INTEGER,
+        PRIMARY KEY (PersonID, AssocID),
+        FOREIGN KEY(PersonID) REFERENCES "Person"(ID),
+        FOREIGN KEY(AssocID) REFERENCES "School"(TableID)
+    )""")
+
+    cur.execute("""
+    CREATE TABLE "PersonRoleAssociation" (
+        "PersonID" INTEGER,
+        "AssocID" INTEGER,
+        PRIMARY KEY (PersonID, AssocID),
+        FOREIGN KEY(PersonID) REFERENCES "Person"(ID),
+        FOREIGN KEY(AssocID) REFERENCES "Role"(TableID)
+    )""")
+
+if __name__ == "__main__":
+    createDatabase("contacts.db")

@@ -1,4 +1,6 @@
+
 #  https://github.com/tiangolo/pydantic-sqlalchemy
+
 from typing import Container, Optional, Type
 
 from pydantic import BaseConfig, BaseModel, create_model
@@ -34,4 +36,5 @@ def sqlalchemy_to_pydantic(
                     default = ...
                 fields[name] = (python_type, default)
     pydantic_model = create_model(db_model.__name__, __config__=config, **fields)
+    pydantic_model.__str__ = db_model.__str__  # sage monkey patch
     return pydantic_model

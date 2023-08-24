@@ -8,7 +8,7 @@ import sqlite3
 import formatters
 from csvInput import PHONE_NUMBER_DF_COLUMN, EMAIL_DF_COLUMN, CLASS_YEAR_DF_COLUMN, FIRST_NAME_DF_COLUMN, \
     LAST_NAME_DF_COLUMN, SCHOOL_DF_COLUMN, ROLE_DF_COLUMN
-
+from schemas import OutputPersonSchema
 
 def queryToDicts(queryResults):
     """
@@ -41,20 +41,17 @@ def sqlOutToDf(fetchAllResult):
         'School': lambda x: ", ".join(map(str, set(x.tolist()))),
         'Role': lambda x: ", ".join(map(str, set(x.tolist()))),
         'Email': lambda x: ", ".join(map(str, set(x.tolist()))),
-        'First': 'first',
-        'Last': 'first',
         'DateAdded': 'first',
         'DateLastEdited': 'first'
     }).reset_index()
 
-    sqlColumns = ["FirstName", "LastName", "Role", "ListName", "PhoneNumber", "DateAdded", "DateLastEdited", "Email",
-                  "First", "Last", "Year", "School"]
+    sqlColumns = ["FirstName", "LastName", "Role", "ListName", "PhoneNumber", "DateAdded", "DateLastEdited", "Email", "Year", "School"]
     outColumns = [FIRST_NAME_DF_COLUMN, LAST_NAME_DF_COLUMN, ROLE_DF_COLUMN, "Associated Lists", PHONE_NUMBER_DF_COLUMN,
                   "Date Added", "Date Last Edited",
-                  EMAIL_DF_COLUMN, "First Name Aliases", "Last Name Aliases", CLASS_YEAR_DF_COLUMN, SCHOOL_DF_COLUMN]
+                  EMAIL_DF_COLUMN, CLASS_YEAR_DF_COLUMN, SCHOOL_DF_COLUMN]
     columnMapping = dict(zip(sqlColumns, outColumns))
     df = df.rename(columns=columnMapping)
-    print(df)
+    # print(df)
     # df = obj_df.head(1).combine_first(obj_df.tail(1)).join(num_df.head(1).add(num_df.tail(1)))
     return df
 
@@ -68,14 +65,13 @@ def outputFromQuery(query, db):
 def outputByLists(lists, db):
     dfs = {}
     for l in lists:
-        query = """SELECT p.*, e.*, r.*, s.*, cl.*, cy.*, a.*
+        query = """SELECT p.*, e.*, r.*, s.*, cl.*, cy.*
                     FROM Person p
                     LEFT JOIN Email e ON p.ID = e.ID
                     LEFT JOIN Role r ON p.ID = r.ID
                     LEFT JOIN School s ON p.ID = s.ID
                     LEFT JOIN ContactList cl ON p.ID = cl.ID
                     LEFT JOIN ClassYear cy ON p.ID = cy.ID
-                    LEFT JOIN Alias a ON p.ID = a.ID
                     WHERE p.ID IN (
                         SELECT ID
                         FROM ContactList

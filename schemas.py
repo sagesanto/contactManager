@@ -4,7 +4,8 @@ from typing import Optional
 import pydantic_core.core_schema
 from graphene_sqlalchemy import SQLAlchemyObjectType
 from models import *
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
+
 
 # Person: sqlAlchemy model; representation of record in Person table - models.py
 # PersonModel: graphene representation of sqlAlchemy model - schemas.py
@@ -60,7 +61,6 @@ pydanticSchool = sqlalchemy_to_pydantic(School)
 # trying to make a schema that can construct person from sqlalchemy
 
 
-
 # this pydantic schema will be used to validate incoming mutation requests
 class PersonSchema(BaseModel):
     # model_config = dict(arbitrary_types_allowed=True)
@@ -83,13 +83,34 @@ def personSchemaToModel(p: PersonSchema):
                   DateLastEdited=p.DateLastEdited)
 
 
-class PersonSchemaOut(pydanticPerson):
+class OutputPersonSchema(pydanticPerson):
     # model_config = dict(arbitrary_types_allowed=True)
     ClassYears: Optional[List[pydanticClassYear]] = []
     ContactLists: List[pydanticContactList] = []
     CsvFilePath: Optional[str] = None
     Emails: Optional[List[pydanticEmail]] = None
-    Role: Optional[List[pydanticRole]] = None
-    School: Optional[List[pydanticSchool]] = None
+    Roles: Optional[List[pydanticRole]] = None
+    Schools: Optional[List[pydanticSchool]] = None
     ID: Optional[int] = None
     PhoneNumber: Optional[str] = None
+
+    @field_serializer('ContactLists', 'ClassYears', 'Emails', 'Roles', 'Schools')
+    def serialize_dt(self, ls, _info):
+        if ls:
+            temp = []
+            for i in ls:
+                temp.append(str(i))
+            if temp:
+                return ", ".join(temp)
+        return None
+        # return [str(i) for i in ls]
+
+    def asdict(self):
+        return self.model_dump()
+
+
+# broken do not use :(
+def OutputPersonSchemaToModel(p: OutputPersonSchema):
+    return Person(ID=p.ID, FirstName=p.FirstName, LastName=p.LastName, PhoneNumber=p.PhoneNumber, DateAdded=p.DateAdded,
+                  DateLastEdited=p.DateLastEdited, ContactLists=p.ContactLists, Roles=p.Roles, Emails=p.Emails,
+                  Schools=p.Schools)

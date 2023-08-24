@@ -74,7 +74,7 @@ def main():
     # logging.basicConfig(level=logging.DEBUG)
     # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
     for file, description in lines:
-        df = formatDf(pd.read_csv("./CSVs/" + file), fmters)
+        df = formatDf(pd.read_csv("./CSVs/" + file, dtype=str), fmters)
         # for col in defaultColumns:
         #     if col not in df.columns:
         #         raise ValueError(f"CSV {file} must have column header '{col}'")

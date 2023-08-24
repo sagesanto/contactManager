@@ -66,7 +66,7 @@ def renewDbSession():
 
 SQLALCHEMY_DATABASE_URL = 'sqlite:///contacts.db'
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL,echo="debug")
+engine = create_engine(SQLALCHEMY_DATABASE_URL, echo="debug")
 
 dbSession = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 Base = declarative_base()

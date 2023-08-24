@@ -14,6 +14,42 @@ PersonContactListAssociation = Table(
     PrimaryKeyConstraint('PersonID', 'ContactListID')
 )
 
+PersonYearAssociation = Table(
+    'PersonYearAssociation',
+    Base.metadata,
+    Column('PersonID', Integer, ForeignKey('Person.ID'), nullable=False),
+    Column('AssocID', Integer, ForeignKey('ClassYear.TableID'), nullable=False),
+    PrimaryKeyConstraint('PersonID', 'AssocID')
+)
+
+PersonEmailAssociation = Table(
+    'PersonEmailAssociation',
+    Base.metadata,
+    Column('PersonID', Integer, ForeignKey('Person.ID'), nullable=False),
+    Column('AssocID', Integer, ForeignKey('Email.TableID'), nullable=False),
+    PrimaryKeyConstraint('PersonID', 'AssocID')
+)
+
+PersonRoleAssociation = Table(
+    'PersonRoleAssociation',
+    Base.metadata,
+    Column('PersonID', Integer, ForeignKey('Person.ID'), nullable=False),
+    Column('AssocID', Integer, ForeignKey('Role.TableID'), nullable=False),
+    PrimaryKeyConstraint('PersonID', 'AssocID')
+)
+
+PersonSchoolAssociation = Table(
+    'PersonSchoolAssociation',
+    Base.metadata,
+    Column('PersonID', Integer, ForeignKey('Person.ID'), nullable=False),
+    Column('AssocID', Integer, ForeignKey('School.TableID'), nullable=False),
+    PrimaryKeyConstraint('PersonID', 'AssocID')
+)
+
+
+
+
+
 
 class Person(Base):
     __tablename__ = 'Person'
@@ -26,14 +62,11 @@ class Person(Base):
     DateLastEdited = Column(String, nullable=False)
 
     # Aliases = relationship('Alias', back_populates='Person')
-    ClassYears: Mapped[List["ClassYear"]] = relationship(back_populates="Person")
-    ContactLists: Mapped[List["ContactList"]] = relationship(
-        "ContactList",
-        secondary=PersonContactListAssociation,
-        back_populates="People")
-    Emails: Mapped[List["Email"]] = relationship(back_populates="Person")
-    Roles: Mapped[List["Role"]] = relationship(back_populates="Person")
-    Schools: Mapped[List["School"]] = relationship(back_populates="Person")
+    ContactLists: Mapped[List["ContactList"]] = relationship("ContactList", secondary=PersonContactListAssociation, back_populates="People", cascade="all, delete")
+    ClassYears: Mapped[List["ClassYear"]] = relationship("ClassYear", secondary=PersonYearAssociation, back_populates="People", cascade="all, delete")
+    Emails: Mapped[List["Email"]] = relationship("Email", secondary=PersonEmailAssociation, back_populates="People", cascade="all, delete")
+    Roles: Mapped[List["Role"]] = relationship("Role", secondary=PersonRoleAssociation, back_populates="People", cascade="all, delete")
+    Schools: Mapped[List["School"]] = relationship("School", secondary=PersonSchoolAssociation, back_populates="People", cascade="all, delete")
 
 
 # not currently in use
@@ -46,48 +79,70 @@ class Person(Base):
 #
 #     Person = relationship('Person', back_populates='Aliases')
 
+class ContactList(Base):
+    __tablename__ = 'ContactList'
+
+    TableID: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True, autoincrement=True)
+    ListName = Column(String, nullable=False, unique=True, index=True)
+    CsvFilePath = Column(String)
+    Date = Column(String, nullable=False)
+    People: Mapped[List["Person"]] = relationship("Person", secondary=PersonContactListAssociation,
+                                                  back_populates="ContactLists")
+
+    def __str__(self):
+        return self.ListName
+
 
 class ClassYear(Base):
     __tablename__ = 'ClassYear'
 
     TableID: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True, autoincrement=True)
-    PersonID: Mapped[int] = mapped_column(Integer, ForeignKey('Person.ID'))
-    Year = Column(Integer, nullable=False)
-    Person: Mapped["Person"] = relationship(back_populates="ClassYears")
+    Year = Column(Integer, nullable=False, unique=True, index=True)
+    People: Mapped[List["Person"]] = relationship("Person", secondary=PersonYearAssociation, back_populates="ClassYears")
 
-
-class ContactList(Base):
-    __tablename__ = 'ContactList'
-
-    TableID: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True, autoincrement=True)
-    ListName = Column(String, nullable=False)
-    CsvFilePath = Column(String)
-    Date = Column(String, nullable=False)
-    People: Mapped[List["Person"]] = relationship("Person", secondary=PersonContactListAssociation, back_populates="ContactLists")
+    def __str__(self):
+        return str(self.Year)
 
 
 class Email(Base):
     __tablename__ = 'Email'
 
     TableID: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True, autoincrement=True)
-    PersonID: Mapped[int] = mapped_column(Integer, ForeignKey('Person.ID'))
     Email = Column(String, nullable=False)
-    Person: Mapped["Person"] = relationship(back_populates="Emails")
+    People: Mapped[List["Person"]] = relationship("Person", secondary=PersonEmailAssociation,
+                                                  back_populates="Emails")
+    def __str__(self):
+        return self.Email
 
 
 class Role(Base):
     __tablename__ = 'Role'
 
     TableID: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True, autoincrement=True)
-    PersonID: Mapped[int] = mapped_column(Integer, ForeignKey('Person.ID'))
-    Role = Column(String, nullable=False)
-    Person: Mapped["Person"] = relationship(back_populates="Roles")
+    Role = Column(String, nullable=False, unique=True, index=True)
+    People: Mapped[List["Person"]] = relationship("Person", secondary=PersonRoleAssociation, back_populates="Roles")
 
+    def __str__(self):
+        return self.Role
+
+
+# class Role(Base):
+#     __tablename__ = 'Role'
+#
+#     TableID: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True, autoincrement=True)
+#     PersonID: Mapped[int] = mapped_column(Integer, ForeignKey('Person.ID'))
+#     Role = Column(String, nullable=False)
+#     Person: Mapped["Person"] = relationship(back_populates="Roles")
+#
+#     def __str__(self):
+#         return self.Role
 
 class School(Base):
     __tablename__ = 'School'
 
     TableID: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True, autoincrement=True)
-    PersonID: Mapped[int] = mapped_column(Integer, ForeignKey('Person.ID'))
-    School = Column(String, nullable=False)
-    Person: Mapped["Person"] = relationship(back_populates="Schools")
+    School = Column(String, nullable=False, unique=True, index=True)
+    People: Mapped[List["Person"]] = relationship("Person", secondary=PersonSchoolAssociation, back_populates="Schools")
+
+    def __str__(self):
+        return self.School

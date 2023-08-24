@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
+from addContact import logger
+
 
 class DataFormatter(ABC):
     def __init__(self, inputColName, outColNames: list):
@@ -33,15 +35,14 @@ class PhoneNumberFormatter(DataFormatter):
         try:
             if pd.isna(number):
                 raise ValueError("Empty phone number")
-            # if not isinstance(number, str):
-            #     number = int(number)  # get rid of an annoying floating .0 that sometimes appeears <--this is bad! overflow if cast phone number to int
-            number = str(number)
             cleaned = re.sub("[^0-9]", "", str(number))[-10:]
             if len(cleaned) < 10:
                 raise ValueError("Must have 10 or more digits.")
+            if cleaned.startswith('0') or cleaned.startswith('1'):
+                raise ValueError("Valid area codes do not start with 0 or 1.")
             return {self.outColNames[0]: cleaned}
         except Exception as e:
-            print("Could not format phone number:", repr(e))
+            logger.warning(f"Could not format phone number {number}: {repr(e)}")
             return {self.outColNames[0]: None}
         # last ten digits of phone number stripped of all non-digit characters
 
